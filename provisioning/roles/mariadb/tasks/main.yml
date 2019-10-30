@@ -1,0 +1,25 @@
+---
+
+- name: copy mariadb.repo
+  copy:
+    src: mariadb.repo
+    dest: /etc/yum.repos.d/mariadb.repo
+
+- name: install boost-program-options
+  dnf:
+    name: boost-program-options
+    state: latest
+
+- name: install mariadb
+  dnf:
+    name:
+      - MariaDB-server
+      - MariaDB-client
+    disablerepo: "AppStream"
+    state: latest
+
+- name: enable and start mariadb
+  systemd:
+    name: mariadb
+    state: started
+    enabled: yes

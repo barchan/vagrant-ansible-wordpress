@@ -1,0 +1,120 @@
+---
+
+- name: create a directory 'wordpress'
+  file:
+    path: /var/www/wordpress
+    state: directory
+    mode: '0755'
+    owner: vagrant
+    group: apache
+
+- name: create database
+  mysql_db:
+    name: wordpress
+    encoding: utf8mb4
+    collation: utf8mb4_unicode_ci
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    state: present
+
+- name: create user for the database
+  mysql_user:
+    name: wordpress
+    password: wordpress
+    priv: 'wordpress.*:ALL'
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    state: present
+
+- name: install wp-cli
+  get_url:
+    url: https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    dest: /usr/local/bin/wp
+    mode: '0755'
+
+- name: check whether wordpress is downloaded
+  stat: path="/var/www/wordpress/wp-config-sample.php"
+  register: wp_is_downloaded
+
+- name: download wordpress core
+  command: /usr/local/bin/wp core download --skip-content
+  become: yes
+  become_user: vagrant
+  args:
+    chdir: /var/www/wordpress/
+  when: wp_is_downloaded.stat.exists == False
+
+- name: check if wp-config.php exists
+  stat: path="/var/www/wordpress/wp-config.php"
+  register: wp_config_exists
+
+- name: generates a wp-config.php file
+  command:
+    argv:
+      - /usr/local/bin/wp
+      - config
+      - create
+      - --dbname=wordpress
+      - --dbuser=wordpress
+      - --dbpass=wordpress
+      - --dbcharset==utf8mb4
+  become: yes
+  become_user: vagrant
+  args:
+    chdir: /var/www/wordpress/
+  when: wp_config_exists.stat.exists == False
+
+- name: check whether wordpress is installed
+  command: /usr/local/bin/wp core is-installed
+  become: yes
+  become_user: vagrant
+  args:
+    chdir: /var/www/wordpress/
+  register: wp_is_installed
+  failed_when: ( wp_is_installed.rc not in [ 0, 1 ] )
+
+- name: install wordpress
+  command:
+    argv:
+      - /usr/local/bin/wp
+      - core
+      - install
+      - --url={{ site_url | quote }}
+      - --title={{ site_title | quote }}
+      - --admin_user={{ admin_user | quote }}
+      - --admin_password={{ admin_pass | quote }}
+      - --admin_email={{ admin_email | quote }}
+      - --skip-email
+  become: yes
+  become_user: vagrant
+  args:
+    chdir: /var/www/wordpress/
+  when: wp_is_installed.rc == 1
+
+- name: check plugins is installed
+  stat: path="/var/www/wordpress/wp-content/plugins"
+  register: plugins_exists
+
+- name: install the necessary plugins
+  command: "/usr/local/bin/wp plugin install {{ item }} --activate"
+  become: yes
+  become_user: vagrant
+  args:
+    chdir: /var/www/wordpress/
+  with_items: "{{ wordpress_plugins }}"
+  when: plugins_exists.stat.exists == False
+
+- name: check twentytwelve is installed
+  command: /usr/local/bin/wp theme is-installed twentytwelve
+  become: yes
+  become_user: vagrant
+  args:
+    chdir: /var/www/wordpress/
+  register: twentytwelve_is_installed
+  failed_when: ( twentytwelve_is_installed.rc not in [ 0, 1 ] )
+
+- name: install twentytwelve theme
+  command: /usr/local/bin/wp theme install twentytwelve --activate
+  become: yes
+  become_user: vagrant
+  args:
+    chdir: /var/www/wordpress/
+  when: twentytwelve_is_installed.rc == 1

@@ -1,0 +1,31 @@
+---
+
+- name: install php:remi-7.3
+  dnf:
+    name: "@php:remi-7.3"
+    state: present
+
+- name: install php modules
+  dnf:
+    name:
+      - php-bcmath
+      - php-gd
+      - php-imagick
+      - php-mcrypt
+      - php-mysqlnd
+      - php-opcache
+      - php-pear
+      - php-zip
+    state: present
+
+- name: copy www.conf
+  copy:
+    src: www.conf
+    dest: /etc/php-fpm.d/www.conf
+    force: yes
+
+- name: enable and start php
+  systemd:
+    name: php-fpm
+    state: started
+    enabled: yes

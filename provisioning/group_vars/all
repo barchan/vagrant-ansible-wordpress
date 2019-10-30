@@ -1,0 +1,15 @@
+---
+
+site_url: wordpress.test
+site_title: wordpress
+admin_user: wordpress
+admin_pass: wordpress
+admin_email: info@example.com
+
+wordpress_plugins:
+- classic-editor
+- contact-form-7
+- disable-emojis
+- query-monitor
+- theme-check
+- wordpress-seo
